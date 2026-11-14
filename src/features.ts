@@ -57,15 +57,19 @@ export class MesaCompletionProvider implements vscode.CompletionItemProvider {
     }
 
     const namelist = namelistAtPosition(document.getText(), position);
-    if (!namelist) return [];
 
     // 2) Value completion, after `name = `.
-    if (/^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*(?:\([^)]*\))?\s*=\s*.*$/.test(before)) {
+    if (namelist && /^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*(?:\([^)]*\))?\s*=\s*.*$/.test(before)) {
       return this.valueCompletions(document, position, namelist, line);
     }
 
-    // 3) Control-name completion inside a namelist.
-    return this.controlCompletions(namelist);
+    // 3) Control-name completion (cross-section aware).
+    return this.controlCompletions(document, position, namelist);
+  }
+
+  private currentWord(document: vscode.TextDocument, position: vscode.Position): string {
+    const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]/);
+    return range ? document.getText(range) : '';
   }
 
   private namelistCompletions(): vscode.CompletionItem[] {
@@ -82,15 +86,47 @@ export class MesaCompletionProvider implements vscode.CompletionItemProvider {
     });
   }
 
-  private controlCompletions(namelist: string): vscode.CompletionItem[] {
-    return getControls(namelist).map((def) => {
-      const item = new vscode.CompletionItem(def.name, vscode.CompletionItemKind.Field);
-      item.detail = `${typeLabel(def)}  =  ${def.default || ''}`;
-      item.documentation = docMarkdown(def, namelist);
-      item.insertText = def.name;
-      item.sortText = def.name;
-      return item;
-    });
+  private controlItem(def: ControlDef, section: string, isCurrent: boolean): vscode.CompletionItem {
+    const item = new vscode.CompletionItem(def.name, vscode.CompletionItemKind.Field);
+    item.detail = isCurrent
+      ? `${typeLabel(def)}  =  ${def.default || ''}`
+      : `${typeLabel(def)}  =  ${def.default || ''}   [&${section}]`;
+    item.documentation = docMarkdown(def, section);
+    item.insertText = def.name;
+    // Current-section matches rank first, then alphabetical by name.
+    item.sortText = (isCurrent ? '0' : '1') + def.name;
+    return item;
+  }
+
+  private controlCompletions(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    namelist: string | null
+  ): vscode.CompletionItem[] {
+    const prefix = this.currentWord(document, position);
+
+    // No word being typed yet: show the current section's controls (or the
+    // available namelist sections when outside a section).
+    if (prefix === '') {
+      if (namelist) {
+        return getControls(namelist).map((def) => this.controlItem(def, namelist, true));
+      }
+      return this.namelistCompletions();
+    }
+
+    // Otherwise: prefix-match controls across all namelists, tagging each with
+    // its section so `stop_*`, `max_*`, `MLT_option`, ... are always findable.
+    const lower = prefix.toLowerCase();
+    const items: vscode.CompletionItem[] = [];
+    for (const section of getNamelists()) {
+      const isCurrent = section === namelist;
+      for (const def of getControls(section)) {
+        if (def.name.toLowerCase().startsWith(lower)) {
+          items.push(this.controlItem(def, section, isCurrent));
+        }
+      }
+    }
+    return items;
   }
 
   private valueCompletions(
