@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MESA Inlist",
+  "scopeName": "source.mesa-inlist",
+  "fileTypes": [],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#namelist-open" },
+    { "include": "#namelist-close" },
+    { "include": "#assignment" }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.line.bang.mesa",
+      "match": "!.*$"
+    },
+    "namelist-open": {
+      "name": "meta.namelist.open.mesa",
+      "match": "^\\s*(&)\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+      "captures": {
+        "1": { "name": "punctuation.definition.section.begin.mesa" },
+        "2": { "name": "entity.name.section.mesa" }
+      }
+    },
+    "namelist-close": {
+      "name": "meta.namelist.close.mesa",
+      "match": "^\\s*(/)",
+      "captures": {
+        "1": { "name": "punctuation.definition.section.end.mesa" }
+      }
+    },
+    "assignment": {
+      "name": "meta.assignment.mesa",
+      "begin": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)(\\s*\\([^)]*\\))?\\s*(=)",
+      "end": "$",
+      "beginCaptures": {
+        "1": { "name": "variable.other.member.mesa" },
+        "2": { "name": "meta.brackets.mesa" },
+        "3": { "name": "keyword.operator.assignment.mesa" }
+      },
+      "patterns": [
+        { "include": "#values" }
+      ]
+    },
+    "values": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#string-single" },
+        { "include": "#string-double" },
+        { "include": "#boolean" },
+        { "include": "#number" }
+      ]
+    },
+    "string-single": {
+      "name": "string.quoted.single.mesa",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        { "name": "constant.character.escape.mesa", "match": "''" }
+      ]
+    },
+    "string-double": {
+      "name": "string.quoted.double.mesa",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.mesa", "match": "\"\"" }
+      ]
+    },
+    "boolean": {
+      "name": "constant.language.boolean.mesa",
+      "match": "\\.(true|false|t|f)\\.?"
+    },
+    "number": {
+      "name": "constant.numeric.mesa",
+      "match": "\\b-?(?:\\d+\\.\\d*(?:[dDeE][+-]?\\d+)?|\\d+[dDeE][+-]?\\d+|\\.\\d+(?:[dDeE][+-]?\\d+)?|\\d+)\\b"
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "name": "mesa-inlist",
+  "displayName": "MESA Inlist",
+  "description": "Syntax highlighting, validation, hover docs and completion for MESA stellar evolution inlist files (inlist, project_inlist, pgstar, etc.). Built for MESA 26.4.",
+  "version": "1.0.0",
+  "publisher": "OfekE",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "mesa",
+    "inlist",
+    "stellar",
+    "astrophysics",
+    "pgstar"
+  ],
+  "activationEvents": [
+    "onLanguage:mesa-inlist"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "mesa-inlist",
+        "aliases": [
+          "MESA Inlist",
+          "mesa-inlist",
+          "inlist"
+        ],
+        "extensions": [
+          ".inlist"
+        ],
+        "filenamePatterns": [
+          "*inlist*"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mesa-inlist",
+        "scopeName": "source.mesa-inlist",
+        "path": "./syntaxes/mesa-inlist.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "mesaInlist.reloadDefaults",
+        "title": "MESA Inlist: Reload control database from MESA_DIR",
+        "category": "MESA Inlist"
+      },
+      {
+        "command": "mesaInlist.setLanguage",
+        "title": "MESA Inlist: Treat current file as a MESA inlist",
+        "category": "MESA Inlist"
+      }
+    ],
+    "configuration": {
+      "title": "MESA Inlist",
+      "properties": {
+        "mesaInlist.mesaDir": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a MESA source tree (e.g. ~/Documents/mesa/mesa_26_04_1). When set, the 'Reload control database' command re-parses this tree's defaults files at runtime. Leave empty to use the embedded database for MESA 26.4."
+        },
+        "mesaInlist.reportUnknownControls": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mark control names that are not in the MESA defaults as errors (red). Disable if you use many custom controls via run_star_extras hooks."
+        },
+        "mesaInlist.reportUnknownNamelists": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also warn about namelist sections that are not known to MESA (e.g. custom namelists)."
+        },
+        "mesaInlist.enableValueTypeChecking": {
+          "type": "boolean",
+          "default": true,
+          "description": "Validate that each value has the correct type (logical, integer, real or string) for its control."
+        },
+        "mesaInlist.enableEnumChecking": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when a string value is not one of the documented options for that control."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "generate": "node scripts/generate-defaults.js",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
