@@ -3,6 +3,7 @@
   "displayName": "MESA Inlist",
   "description": "Syntax highlighting, validation, hover docs and completion for MESA stellar evolution inlist files (inlist, project_inlist, pgstar, etc.). Built for MESA 26.4.",
   "version": "1.1.0",
+  "icon": "icons/mesa-icon-128.png",
   "publisher": "OfekE",
   "license": "MIT",
   "engines": {
