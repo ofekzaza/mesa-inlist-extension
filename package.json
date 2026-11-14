@@ -38,7 +38,11 @@
         "filenamePatterns": [
           "*inlist*"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/mesa-inlist.svg",
+          "dark": "./icons/mesa-inlist.svg"
+        }
       }
     ],
     "grammars": [
