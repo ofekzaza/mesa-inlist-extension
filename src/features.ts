@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { parse, inferValueType, unquote } from './parser';
-import { getControl, getControls } from './database';
+import { getControl, getControls, getNamelists } from './database';
 import { ControlDef } from './types';
 
 /**
@@ -20,23 +20,22 @@ export function namelistAtPosition(text: string, position: vscode.Position): str
 }
 
 function typeLabel(def: ControlDef): string {
-  const arr = def.isArray ? '[]' : '';
-  return `${def.type}${arr}`;
+  return def.isArray ? `${def.type}[]` : def.type;
 }
 
 function docMarkdown(def: ControlDef, namelist?: string): vscode.MarkdownString {
   const md = new vscode.MarkdownString();
   md.supportHtml = false;
 
-  const header = `\`${def.name}\` — \`${typeLabel(def)}\`` + (namelist ? ` in \`&${namelist}\`` : '');
+  const header =
+    `\`${def.name}\` — \`${typeLabel(def)}\`` +
+    (namelist ? ` in \`&${namelist}\`` : '');
   md.appendMarkdown(header);
   if (def.default !== undefined && def.default !== '') {
     md.appendMarkdown(`\n\n**Default:** \`${def.default}\``);
   }
   if (def.enums && def.enums.length > 0) {
-    md.appendMarkdown(
-      `\n\n**Options:** ${def.enums.map((e) => `\`'${e}'\``).join(', ')}`
-    );
+    md.appendMarkdown(`\n\n**Options:** ${def.enums.map((e) => `\`'${e}'\``).join(', ')}`);
   }
   if (def.doc) {
     md.appendMarkdown('\n\n---\n\n' + def.doc);
@@ -49,28 +48,46 @@ export class MesaCompletionProvider implements vscode.CompletionItemProvider {
     document: vscode.TextDocument,
     position: vscode.Position
   ): vscode.CompletionItem[] {
-    const text = document.getText();
-    const namelist = namelistAtPosition(text, position);
-    if (!namelist) return [];
-
     const line = document.lineAt(position.line).text;
-    const beforeCursor = line.slice(0, position.character);
+    const before = line.slice(0, position.character);
 
-    // Are we on the right-hand side of an assignment?
-    const rhs = /^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*(\([^)]*\))?\s*=\s*/.exec(beforeCursor);
-    if (rhs) {
-      return this.valueCompletions(document, position, namelist, line, beforeCursor);
+    // 1) Namelist-section completion, right after `&`.
+    if (/^\s*&[a-zA-Z_]*$/.test(before)) {
+      return this.namelistCompletions();
     }
 
+    const namelist = namelistAtPosition(document.getText(), position);
+    if (!namelist) return [];
+
+    // 2) Value completion, after `name = `.
+    if (/^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*(?:\([^)]*\))?\s*=\s*.*$/.test(before)) {
+      return this.valueCompletions(document, position, namelist, line);
+    }
+
+    // 3) Control-name completion inside a namelist.
     return this.controlCompletions(namelist);
   }
 
+  private namelistCompletions(): vscode.CompletionItem[] {
+    return getNamelists().map((name) => {
+      const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Module);
+      item.detail = `namelist section (&${name})`;
+      item.insertText = name;
+      const count = getControls(name).length;
+      item.documentation = new vscode.MarkdownString(
+        `\`&${name}\` namelist section — ${count} controls available.`
+      );
+      item.sortText = '0' + name;
+      return item;
+    });
+  }
+
   private controlCompletions(namelist: string): vscode.CompletionItem[] {
-    const controls = getControls(namelist);
-    return controls.map((def) => {
+    return getControls(namelist).map((def) => {
       const item = new vscode.CompletionItem(def.name, vscode.CompletionItemKind.Field);
-      item.detail = `${typeLabel(def)} = ${def.default}`;
+      item.detail = `${typeLabel(def)}  =  ${def.default || ''}`;
       item.documentation = docMarkdown(def, namelist);
+      item.insertText = def.name;
       item.sortText = def.name;
       return item;
     });
@@ -80,45 +97,43 @@ export class MesaCompletionProvider implements vscode.CompletionItemProvider {
     document: vscode.TextDocument,
     position: vscode.Position,
     namelist: string,
-    line: string,
-    beforeCursor: string
+    line: string
   ): vscode.CompletionItem[] {
-    // Determine which control we are completing a value for.
-    const m = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\([^)]*\))?\s*=\s*(.*)$/.exec(beforeCursor);
+    const before = line.slice(0, position.character);
+    const m = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\([^)]*\))?\s*=\s*(.*)$/.exec(before);
     if (!m) return [];
     const baseName = m[1];
-    const typed = m[2].trim();
+    const prefix = m[2];
     const def = getControl(namelist, baseName);
     if (!def) return [];
 
-    const prefix = typed;
-    const items: vscode.CompletionItem[] = [];
+    // Replace everything from the start of the value up to the cursor.
+    const eqIdx = line.indexOf('=');
+    let valueStart = eqIdx + 1;
+    while (valueStart < line.length && /\s/.test(line[valueStart])) valueStart++;
+    const range = new vscode.Range(position.line, valueStart, position.line, position.character);
 
-    if (def.type === 'boolean') {
-      for (const b of ['.true.', '.false.']) {
-        if (b.startsWith(prefix)) {
-          const item = new vscode.CompletionItem(b, vscode.CompletionItemKind.Value);
-          item.detail = 'logical';
-          items.push(item);
-        }
-      }
-    } else if (def.type === 'string') {
-      if (def.enums && def.enums.length > 0) {
-        for (const e of def.enums) {
-          const val = `'${e}'`;
-          if (val.startsWith(prefix)) {
-            const item = new vscode.CompletionItem(val, vscode.CompletionItemKind.Value);
-            item.detail = `option for ${def.name}`;
-            items.push(item);
-          }
-        }
-      }
-      const empty = `''`;
-      if (empty.startsWith(prefix) && items.length === 0) {
-        const item = new vscode.CompletionItem(empty, vscode.CompletionItemKind.Value);
-        item.detail = 'empty string';
+    const items: vscode.CompletionItem[] = [];
+    const add = (text: string, detail: string) => {
+      if (text.startsWith(prefix)) {
+        const item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Value);
+        item.detail = detail;
+        item.insertText = text;
+        item.range = range;
         items.push(item);
       }
+    };
+
+    if (def.type === 'boolean') {
+      add('.true.', 'logical');
+      add('.false.', 'logical');
+    } else if (def.type === 'string') {
+      for (const e of def.enums) add(`'${e}'`, `option for ${def.name}`);
+      if (def.enums.length === 0) add(`''`, 'empty string');
+      else if (def.default) add(def.default, `default for ${def.name}`);
+    } else {
+      // real / integer: offer the default value as a convenience.
+      if (def.default) add(def.default, `default for ${def.name}`);
     }
 
     return items;
@@ -142,7 +157,6 @@ export class MesaHoverProvider implements vscode.HoverProvider {
         if (hit) {
           return new vscode.Hover(docMarkdown(hit, a.namelist ?? undefined));
         }
-        // Unknown control
         return new vscode.Hover(
           new vscode.MarkdownString(`\`${a.baseName}\` is not a known MESA control.`)
         );

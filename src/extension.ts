@@ -20,10 +20,19 @@ export function activate(context: vscode.ExtensionContext): void {
     color: new vscode.ThemeColor('editorError.foreground'),
   });
 
-  // 3. Providers.
+  // 3. Providers. Trigger characters make value completion appear automatically
+  //    after `=`, `&`, quotes and the leading dot of a logical.
   const selector: vscode.DocumentSelector = { language: LANGUAGE_ID };
   context.subscriptions.push(
-    vscode.languages.registerCompletionItemProvider(selector, new MesaCompletionProvider()),
+    vscode.languages.registerCompletionItemProvider(
+      selector,
+      new MesaCompletionProvider(),
+      '=',
+      '&',
+      "'",
+      '"',
+      '.'
+    ),
     vscode.languages.registerHoverProvider(selector, new MesaHoverProvider())
   );
 
