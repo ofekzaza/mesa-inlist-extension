@@ -1,18 +1,26 @@
 import * as vscode from 'vscode';
-import { loadEmbedded } from './database';
+import { loadEmbedded, loadColumnsEmbedded } from './database';
 import { validateDocument, readSettings, ValidationResult } from './validate';
 import { MesaCompletionProvider, MesaHoverProvider } from './features';
+import {
+  validateColumnsDocument,
+  MesaColumnsCompletionProvider,
+  MesaColumnsHoverProvider,
+} from './columns';
 import { reloadFromConfiguredDir } from './reload';
 
-const LANGUAGE_ID = 'mesa-inlist';
+const INLIST_LANG = 'mesa-inlist';
+const COLUMNS_LANG = 'mesa-columns';
+const SUPPORTED_LANGS = new Set([INLIST_LANG, COLUMNS_LANG]);
 
 let diagnosticCollection: vscode.DiagnosticCollection;
 let invalidDecoration: vscode.TextEditorDecorationType;
 const debounce = new Map<string, NodeJS.Timeout>();
 
 export function activate(context: vscode.ExtensionContext): void {
-  // 1. Load the embedded control database (MESA 26.4).
+  // 1. Load the embedded control + columns databases (MESA 26.4).
   loadEmbedded();
+  loadColumnsEmbedded();
 
   // 2. Diagnostics collection + decorations.
   diagnosticCollection = vscode.languages.createDiagnosticCollection('mesa-inlist');
@@ -22,10 +30,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // 3. Providers. Trigger characters make value completion appear automatically
   //    after `=`, `&`, quotes and the leading dot of a logical.
-  const selector: vscode.DocumentSelector = { language: LANGUAGE_ID };
   context.subscriptions.push(
     vscode.languages.registerCompletionItemProvider(
-      selector,
+      { language: INLIST_LANG },
       new MesaCompletionProvider(),
       '=',
       '&',
@@ -33,7 +40,15 @@ export function activate(context: vscode.ExtensionContext): void {
       '"',
       '.'
     ),
-    vscode.languages.registerHoverProvider(selector, new MesaHoverProvider())
+    vscode.languages.registerHoverProvider({ language: INLIST_LANG }, new MesaHoverProvider()),
+    vscode.languages.registerCompletionItemProvider(
+      { language: COLUMNS_LANG },
+      new MesaColumnsCompletionProvider()
+    ),
+    vscode.languages.registerHoverProvider(
+      { language: COLUMNS_LANG },
+      new MesaColumnsHoverProvider()
+    )
   );
 
   // 4. Commands.
@@ -45,7 +60,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('mesaInlist.setLanguage', async () => {
       const editor = vscode.window.activeTextEditor;
       if (editor) {
-        await vscode.languages.setTextDocumentLanguage(editor.document, LANGUAGE_ID);
+        await vscode.languages.setTextDocumentLanguage(editor.document, INLIST_LANG);
         refreshDocument(editor.document);
       }
     })
@@ -54,15 +69,15 @@ export function activate(context: vscode.ExtensionContext): void {
   // 5. Refresh on document change / open / settings change.
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
-      if (e.document.languageId !== LANGUAGE_ID) return;
+      if (!SUPPORTED_LANGS.has(e.document.languageId)) return;
       scheduleRefresh(e.document);
     }),
     vscode.workspace.onDidOpenTextDocument((doc) => {
-      if (doc.languageId !== LANGUAGE_ID) return;
+      if (!SUPPORTED_LANGS.has(doc.languageId)) return;
       refreshDocument(doc);
     }),
     vscode.window.onDidChangeActiveTextEditor((editor) => {
-      if (editor && editor.document.languageId === LANGUAGE_ID) {
+      if (editor && SUPPORTED_LANGS.has(editor.document.languageId)) {
         refreshDocument(editor.document);
       }
     }),
@@ -89,15 +104,19 @@ function scheduleRefresh(document: vscode.TextDocument): void {
 }
 
 function refreshDocument(document: vscode.TextDocument): void {
-  if (document.languageId !== LANGUAGE_ID) return;
+  let result: ValidationResult;
 
-  const result: ValidationResult = validateDocument(document, readSettings());
+  if (document.languageId === COLUMNS_LANG) {
+    result = validateColumnsDocument(document);
+  } else if (document.languageId === INLIST_LANG) {
+    result = validateDocument(document, readSettings());
+  } else {
+    return;
+  }
 
-  // Apply diagnostics to the collection (shown in all editors for the doc).
   diagnosticCollection.set(document.uri, result.diagnostics);
 
-  // Apply decorations to each visible editor for this document.
-  const invalidRanges: vscode.Range[] = result.invalidNameRanges;
+  const invalidRanges = result.invalidNameRanges;
   for (const editor of vscode.window.visibleTextEditors) {
     if (editor.document.uri.toString() === document.uri.toString()) {
       editor.setDecorations(invalidDecoration, invalidRanges);
@@ -107,7 +126,7 @@ function refreshDocument(document: vscode.TextDocument): void {
 
 function refreshAll(): void {
   for (const editor of vscode.window.visibleTextEditors) {
-    if (editor.document.languageId === LANGUAGE_ID) {
+    if (SUPPORTED_LANGS.has(editor.document.languageId)) {
       refreshDocument(editor.document);
     }
   }

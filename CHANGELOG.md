@@ -2,6 +2,14 @@
 
 All notable changes to this extension are documented here.
 
+## [1.2.0]
+
+### Added
+- Support for `history_columns.list` / `profile_columns.list` files: syntax
+  highlighting, red-marking of unknown columns, completion and hover docs.
+- Recognition of prefix-based columns (`center_h1`, `raw_rate_*`, `bc_*`, …)
+  and `add_*` / `include` directives.
+
 ## [1.1.0]
 
 ### Added
@@ -19,3 +27,4 @@ All notable changes to this extension are documented here.
 - Hover documentation (type, default, options, MESA docs).
 - Control database generated from MESA 26.4.1 (7,263 controls across 12 namelists).
 - Runtime re-parser to target any MESA version via `mesaInlist.mesaDir`.
+

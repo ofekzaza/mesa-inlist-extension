@@ -1,8 +1,8 @@
 {
   "name": "mesa-inlist",
   "displayName": "MESA Inlist",
-  "description": "Syntax highlighting, validation, hover docs and completion for MESA stellar evolution inlist files (inlist, project_inlist, pgstar, etc.). Built for MESA 26.4.",
-  "version": "1.1.0",
+  "description": "Syntax highlighting, validation, hover docs and completion for MESA stellar evolution inlist files (inlist, project_inlist, pgstar) and history/profile columns files. Built for MESA 26.4.",
+  "version": "1.2.0",
   "icon": "icons/mesa-icon-128.png",
   "publisher": "OfekE",
   "license": "MIT",
@@ -44,6 +44,23 @@
           "light": "./icons/mesa-icon.png",
           "dark": "./icons/mesa-icon.png"
         }
+      },
+      {
+        "id": "mesa-columns",
+        "aliases": [
+          "MESA Columns",
+          "mesa-columns"
+        ],
+        "filenamePatterns": [
+          "*history_columns*",
+          "*profile_columns*"
+        ],
+        "firstLine": "^\\s*!(history_columns|profile_columns)\\.list",
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/mesa-icon.png",
+          "dark": "./icons/mesa-icon.png"
+        }
       }
     ],
     "grammars": [
@@ -51,6 +68,11 @@
         "language": "mesa-inlist",
         "scopeName": "source.mesa-inlist",
         "path": "./syntaxes/mesa-inlist.tmLanguage.json"
+      },
+      {
+        "language": "mesa-columns",
+        "scopeName": "source.mesa-columns",
+        "path": "./syntaxes/mesa-columns.tmLanguage.json"
       }
     ],
     "commands": [
@@ -100,7 +122,9 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "generate": "node scripts/generate-defaults.js",
+    "generate": "node scripts/generate-defaults.js && node scripts/generate-columns.js",
+    "generate:defaults": "node scripts/generate-defaults.js",
+    "generate:columns": "node scripts/generate-columns.js",
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
