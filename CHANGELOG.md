@@ -2,6 +2,11 @@
 
 All notable changes to this extension are documented here.
 
+## [1.2.3]
+
+### Changed
+- Column icon: removed the white background (now transparent).
+
 ## [1.2.2]
 
 ### Fixed
