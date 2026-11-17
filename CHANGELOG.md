@@ -2,6 +2,14 @@
 
 All notable changes to this extension are documented here.
 
+## [1.2.2]
+
+### Fixed
+- Columns autocomplete stopping after the first use: removed custom word
+  detection that could go stale, and let VS Code filter suggestions natively.
+- Guarded completion/validation against exceptions so a bad edit can't silently
+  break the extension.
+
 ## [1.2.1]
 
 ### Fixed

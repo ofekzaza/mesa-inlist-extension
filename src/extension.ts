@@ -104,23 +104,27 @@ function scheduleRefresh(document: vscode.TextDocument): void {
 }
 
 function refreshDocument(document: vscode.TextDocument): void {
-  let result: ValidationResult;
+  try {
+    let result: ValidationResult;
 
-  if (document.languageId === COLUMNS_LANG) {
-    result = validateColumnsDocument(document);
-  } else if (document.languageId === INLIST_LANG) {
-    result = validateDocument(document, readSettings());
-  } else {
-    return;
-  }
-
-  diagnosticCollection.set(document.uri, result.diagnostics);
-
-  const invalidRanges = result.invalidNameRanges;
-  for (const editor of vscode.window.visibleTextEditors) {
-    if (editor.document.uri.toString() === document.uri.toString()) {
-      editor.setDecorations(invalidDecoration, invalidRanges);
+    if (document.languageId === COLUMNS_LANG) {
+      result = validateColumnsDocument(document);
+    } else if (document.languageId === INLIST_LANG) {
+      result = validateDocument(document, readSettings());
+    } else {
+      return;
     }
+
+    diagnosticCollection.set(document.uri, result.diagnostics);
+
+    const invalidRanges = result.invalidNameRanges;
+    for (const editor of vscode.window.visibleTextEditors) {
+      if (editor.document.uri.toString() === document.uri.toString()) {
+        editor.setDecorations(invalidDecoration, invalidRanges);
+      }
+    }
+  } catch (err) {
+    console.error('mesa-inlist: refresh failed', err);
   }
 }
 

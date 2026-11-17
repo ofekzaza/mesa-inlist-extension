@@ -142,38 +142,45 @@ export class MesaColumnsCompletionProvider implements vscode.CompletionItemProvi
     document: vscode.TextDocument,
     position: vscode.Position
   ): vscode.CompletionItem[] {
-    const type = columnFileType(document);
-    const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_]/);
-    const prefix = wordRange ? document.getText(wordRange).toLowerCase() : '';
+    try {
+      const type = columnFileType(document);
 
-    const items: vscode.CompletionItem[] = [];
-    const seen = new Set<string>();
+      // Don't offer completion inside comments (`! ...`).
+      const line = document.lineAt(position.line).text;
+      const before = line.slice(0, position.character);
+      if (/^\s*!/.test(before)) return [];
 
-    const push = (info: ColumnEntry) => {
-      if (seen.has(info.name)) return;
-      if (prefix && !info.name.toLowerCase().startsWith(prefix)) return;
-      seen.add(info.name);
+      const items: vscode.CompletionItem[] = [];
+      const seen = new Set<string>();
 
-      const kind =
-        info.kind === 'directive'
-          ? vscode.CompletionItemKind.Keyword
-          : vscode.CompletionItemKind.Field;
-      const item = new vscode.CompletionItem(info.name, kind);
-      item.detail = kindLabel(info.kind);
-      item.documentation = columnDoc(info);
-      item.sortText = info.name;
-      item.insertText =
-        info.name === 'include'
-          ? new vscode.SnippetString("include '${1:filename}'")
-          : info.name;
-      items.push(item);
-    };
+      const lists: ('history' | 'profile')[] =
+        type === 'both' ? ['history', 'profile'] : [type];
+      for (const t of lists) {
+        for (const info of getColumnEntries(t)) {
+          if (seen.has(info.name)) continue;
+          seen.add(info.name);
 
-    const lists: ('history' | 'profile')[] = type === 'both' ? ['history', 'profile'] : [type];
-    for (const t of lists) {
-      for (const info of getColumnEntries(t)) push(info);
+          const kind =
+            info.kind === 'directive'
+              ? vscode.CompletionItemKind.Keyword
+              : vscode.CompletionItemKind.Field;
+          const item = new vscode.CompletionItem(info.name, kind);
+          item.detail = kindLabel(info.kind);
+          item.documentation = columnDoc(info);
+          item.filterText = info.name;
+          item.sortText = info.name;
+          item.insertText =
+            info.name === 'include'
+              ? new vscode.SnippetString("include '${1:filename}'")
+              : info.name;
+          items.push(item);
+        }
+      }
+      return items;
+    } catch (err) {
+      console.error('mesa-inlist: columns completion failed', err);
+      return [];
     }
-    return items;
   }
 }
 
