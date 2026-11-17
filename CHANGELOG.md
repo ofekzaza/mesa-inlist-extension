@@ -2,6 +2,11 @@
 
 All notable changes to this extension are documented here.
 
+## [1.2.4]
+
+### Changed
+- Column icon recolored to a nice blue.
+
 ## [1.2.3]
 
 ### Changed
