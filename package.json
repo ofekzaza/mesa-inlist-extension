@@ -2,7 +2,7 @@
   "name": "mesa-inlist",
   "displayName": "MESA Inlist",
   "description": "Syntax highlighting, validation, hover docs and completion for MESA stellar evolution inlist files (inlist, project_inlist, pgstar) and history/profile columns files. Built for MESA 26.4.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "icon": "icons/mesa-icon-128.png",
   "publisher": "OfekE",
   "license": "MIT",
@@ -21,7 +21,8 @@
     "pgstar"
   ],
   "activationEvents": [
-    "onLanguage:mesa-inlist"
+    "onLanguage:mesa-inlist",
+    "onLanguage:mesa-columns"
   ],
   "main": "./out/extension.js",
   "contributes": {

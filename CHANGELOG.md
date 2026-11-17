@@ -2,6 +2,13 @@
 
 All notable changes to this extension are documented here.
 
+## [1.2.1]
+
+### Fixed
+- Columns files now activate the extension (missing `onLanguage:mesa-columns`
+  activation event), so autocomplete, hover and validation work there.
+- Column/extension icons shifted slightly right.
+
 ## [1.2.0]
 
 ### Added
