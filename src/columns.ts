@@ -153,11 +153,19 @@ export class MesaColumnsCompletionProvider implements vscode.CompletionItemProvi
       if (seen.has(info.name)) return;
       if (prefix && !info.name.toLowerCase().startsWith(prefix)) return;
       seen.add(info.name);
-      const item = new vscode.CompletionItem(info.name, vscode.CompletionItemKind.Value);
+
+      const kind =
+        info.kind === 'directive'
+          ? vscode.CompletionItemKind.Keyword
+          : vscode.CompletionItemKind.Field;
+      const item = new vscode.CompletionItem(info.name, kind);
       item.detail = kindLabel(info.kind);
       item.documentation = columnDoc(info);
-      item.insertText = info.name;
       item.sortText = info.name;
+      item.insertText =
+        info.name === 'include'
+          ? new vscode.SnippetString("include '${1:filename}'")
+          : info.name;
       items.push(item);
     };
 

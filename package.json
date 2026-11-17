@@ -58,8 +58,8 @@
         "firstLine": "^\\s*!(history_columns|profile_columns)\\.list",
         "configuration": "./language-configuration.json",
         "icon": {
-          "light": "./icons/mesa-icon.png",
-          "dark": "./icons/mesa-icon.png"
+          "light": "./icons/column-icon.png",
+          "dark": "./icons/column-icon.png"
         }
       }
     ],
